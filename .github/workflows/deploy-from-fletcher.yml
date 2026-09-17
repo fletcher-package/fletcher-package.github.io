@@ -1,0 +1,61 @@
+name: Deploy docs from fletcher
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types:
+      - fletcher-docs-updated
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  SOURCE_REPOSITORY: fletcher-package/fletcher
+  SOURCE_REF: main
+  SOURCE_PATH: docs/site
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SOURCE_REPOSITORY }}
+          ref: ${{ env.SOURCE_REF }}
+          path: source
+          fetch-depth: 1
+
+      - name: Select site directory
+        id: site
+        run: |
+          if [ -d "source/${SOURCE_PATH}" ]; then
+            echo "path=source/${SOURCE_PATH}" >> "$GITHUB_OUTPUT"
+          elif [ -d "source/docs" ]; then
+            echo "path=source/docs" >> "$GITHUB_OUTPUT"
+          else
+            echo "No static site directory found in ${SOURCE_REPOSITORY}." >&2
+            exit 1
+          fi
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ steps.site.outputs.path }}
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
