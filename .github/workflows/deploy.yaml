@@ -1,0 +1,39 @@
+name: Deploy fletcher documentation site
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Workflow run ID from fletcher-package/fletcher"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Download site artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download "${{ inputs.run_id }}" \
+            --repo fletcher-package/fletcher \
+            --name site \
+            --dir public/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public/
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v5
